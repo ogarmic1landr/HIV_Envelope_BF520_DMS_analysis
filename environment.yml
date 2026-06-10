@@ -6,17 +6,17 @@ channels:
   - defaults
 
 dependencies:
-  - python
+  - python=3.11
   - pip
 
   # Workflow
-  - snakemake
+  - snakemake=7.21
 
   # Sequence analysis
   - mafft
   - minimap2
   - biopython
-  
+  - entrez-direct
 
   # Core scientific stack
   - numpy
