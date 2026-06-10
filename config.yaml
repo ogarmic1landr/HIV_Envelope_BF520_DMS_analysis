@@ -1,0 +1,222 @@
+ # Config for analysis
+
+# ----------------------------------------------------------------------------
+# Relative paths from your top-level Snakefile to where you have the pipeline
+# submodule cloned, and where you build the docs. Typically your top-level
+# Snakefile will be in the root directory and paths will be `dms-vep-pipeline`
+# and `./`, but in this example they are upstream from this subdirectory.
+# ----------------------------------------------------------------------------
+pipeline_path: dms-vep-pipeline
+docs: docs
+
+# ----------------------------------------------------------------------------
+# Details on repo used for docs
+# ----------------------------------------------------------------------------
+github_repo: HIV_Envelope_BF520_DMS_CD4bs_sera
+github_user: dms-vep
+github_branch: main
+description: Deep mutational scanning of HIV Envelope BF520 with anti-CD4 binding site sera and antibodies
+year: 2023
+authors: Caelan Radford, Jesse Bloom, et al. See the pre-print here (https://www.biorxiv.org/content/10.1101/2023.03.23.533993v1)
+
+# ----------------------------------------------------------------------------
+# Parameters for analysis
+# ----------------------------------------------------------------------------
+# Parameters for building PacBio CCS consensuses
+max_ccs_error_rate: 1.0e-4  # only keep CCS if gene/barcode error rate <= this
+consensus_params:  # parameters for building PacBio consensus sequences
+  max_sub_diffs: null
+  max_indel_diffs: null
+  max_minor_sub_frac: 0.4
+  max_minor_indel_frac: 0.4
+  min_support: 3
+
+# Parameters for processing Illumina barcodes
+illumina_barcode_parser_params:
+  upstream: AACTCCACTAGGAACATTTCTCTCTCGAATCTAGA
+  downstream: ''
+  minq: 20
+  upstream_mismatch: 2
+
+# Require samples to have an average of >= this many counts per variant.
+# Error raised for any sample with < this many counts unless it is specified
+# for `exclude_after_counts` in `barcode_runs`
+min_avg_counts: 15  # consider value more like ~20 for real pipelines
+
+muteffects_avg_method: mean
+
+# Parameters for antibody escape-probability calculation.
+# Require neut standard to have at least this many counts
+# and this much fraction of total counts or raise error:
+prob_escape_min_neut_standard_count: 1000
+prob_escape_min_neut_standard_frac: 0.0001
+# Only compute escape probabilities for variants with at least this many
+# counts and this fraction of total counts in no-antibody sample:
+prob_escape_min_no_antibody_counts: 100
+prob_escape_min_no_antibody_frac: 0.00001   # make smaller for large libraries, say 0.1 / (library size)
+
+# when averaging antibody escape values, take the "median" or "mean"?
+escape_avg_method: median
+
+# Parameters for functional scores and global epistasis analysis
+func_scores_pseudocount: 0.5  # pseudocount when computing functional scores
+func_scores_min_wt_count: 1000  # require this many wildtype counts or error
+func_scores_min_wt_frac:  0.001  # require this fraction of all counts for wildtype or error
+# Only fit global epistasis models for variants with at least this many
+# pre-selection counts and this fraction of total pre-selection counts
+func_scores_min_preselection_counts: 20
+func_scores_min_preselection_frac: 0.000001  # make smaller for large libraries, say 0.1 / (library size)
+
+# keyword arguments to `polyclonal.plot.lineplot_and_heatmap` for plotting functional effects
+muteffects_plot_kwargs:
+  addtl_slider_stats:
+    times_seen: 3
+  heatmap_max_at_least: 1
+  heatmap_min_at_least: -1
+  init_floor_at_zero: False
+  slider_binding_range_kwargs:
+    n_libraries:
+      step: 1
+    times_seen:
+      step: 1
+      min: 1
+      max: 25
+  sites_to_show: 
+    include_range: 
+      - 30
+      - 702
+  
+# keyword arguments to pass to epistasis model fitting
+epistasis_model_likelihood: Cauchy
+epistasis_model_ftol: .000001
+
+# when fitting global epistasis models, put this floor on functional scores. "null" or not specifying
+# parameter means no floor.
+func_scores_floor: -5
+
+PDB: data/PDBs/env_trimer_6UDJ.pdb
+
+# PDB files to visualize antibody escape
+antibody_escape_PDBs:
+  1-18: '6UDJ.pdb'
+  3BNC117: '5V8M.pdb'
+  PGT151: '6MAR.pdb'
+  IDC561: '6UDJ.pdb'
+  IDC513: '5V8M.pdb'
+  IDC508: '6UDJ.pdb'
+  IDF033: '6UDJ.pdb'
+  
+# Env chains in each PDB file
+env_chains_by_PDB:
+  6UDJ.pdb: 'C F M G J P'
+  5V8M.pdb: 'A F G B I J'
+  6MAR.pdb: 'A C E B D F'
+  7UGP.pdb: 'A B C D E F'
+# ----------------------------------------------------------------------------
+# Input data to dms-vep-pipeline
+# ----------------------------------------------------------------------------
+# PacBio sequencing
+pacbio_runs: data/PacBio_runs.csv  # PacBio sequencing data
+pacbio_amplicon: data/PacBio_amplicon.gb  # Genbank file with PacBio amplicon
+pacbio_amplicon_specs: data/PacBio_feature_parse_specs.yaml  # alignparse feature parsing
+variant_tags:  # variant tags in PacBio amplicon, or "null" if no tags
+  variant_tag5:
+    variant_1: G
+    variant_2: C
+    wildtype: A
+  variant_tag3:
+    variant_1: G
+    variant_2: C
+    wildtype: A
+
+# Map sequential 1, 2, numbering of gene in PacBio amplicon to the desired
+# final reference numbering scheme. Unlike in the `dms-vep-pipeline`
+# test example, here we create this mapping from the Genbank accession.
+numbering_reference_accession: AAB50262  # HXB2
+# file that maps reference sites to regions
+reference_site_regions: data/reference_site_to_region.csv
+# generated file by `Snakefile` with reference site numbering
+site_numbering_map: results/site_numbering/site_numbering_map.csv
+
+# library design inputs into main pipeline
+natural_sequence_data: library_design/results/natural_sequence_data.csv
+natural_sequence_counts: library_design/results/natural_sequence_mutation_counts.csv
+# Classify mutations into different categories, such as which ones are
+# designed to be in the library.
+mutation_design_classification: library_design/results/designed_mutations.csv
+
+# Neutralization standard barcodes
+neut_standard_barcodes: data/neutralization_standard_barcodes.csv
+
+# Illumina barcode sequencing
+barcode_runs: data/barcode_runs.csv
+
+# configuration for polyclonal fitting
+polyclonal_config: data/polyclonal_config.yaml
+fit_polyclonal_threads: 2  # threads to use per fit (ie, for bootstrapping)
+
+# List antibodies and mutations for which we want to calculate ICs, such
+# as for validation experiments
+validation_ics: data/validation_ICs.csv
+
+# directory containing PDB structures to be used: 
+PDB_structures: data/PDBs
+# ----------------------------------------------------------------------------
+# Names of output directories / files
+# ----------------------------------------------------------------------------
+# directory with logs from running snakemake steps
+logdir: results/logs
+
+# gene sequence extracted from PacBio amplicon
+gene_sequence_codon: results/gene_sequence/codon.fasta
+gene_sequence_protein: results/gene_sequence/protein.fasta
+
+
+# spatial distances between residues
+spatial_distances: results/spatial_distances/spatial_distances.csv
+
+# processing of PacBio CCSs to create codon-variant table
+process_ccs_dir: results/process_ccs
+aligned_ccs_file: results/process_ccs/CCSs_aligned_to_amplicon.csv
+nt_variants: results/variants/nt_variants.csv
+codon_variants: results/variants/codon_variants.csv
+
+# barcode sequencing
+processed_barcode_runs: results/barcode_runs/processed_barcode_runs.csv
+barcode_counts_dir: results/barcode_runs/counts_by_sample
+barcode_counts_invalid_dir: results/barcode_runs/counts_invalid_by_sample
+barcode_fates_dir: results/barcode_runs/fates_by_sample
+
+# variant counts
+variant_counts_dir: results/variant_counts
+variant_avg_counts_plot: results/variant_counts/avg_counts_per_variant.html
+variant_avg_counts_csv: results/variant_counts/avg_counts_per_variant.csv
+
+# escape probabilities for antibody selections
+prob_escape_dir: results/prob_escape
+antibody_selections: results/prob_escape/antibody_selections.csv
+
+# polyclonal fitting directory
+polyclonal_dir: results/polyclonal_fits
+
+# antibody-escape values
+escape_dir: results/antibody_escape
+
+# functional scores for functional selections
+func_score_dir: ../results/func_scores/merged_output_clean/mapped_output_clean/pipeline_output
+functional_selections: ../results/func_scores/functional_selections_clean.csv
+
+# global epistasis fitting directory
+globalepistasis_dir: results/globalepistasis_fits
+
+# mutation effects on function (viral entry) averaged over replicates
+muteffects_observed: results/muteffects_functional/muteffects_observed.csv
+muteffects_latent: results/muteffects_functional/muteffects_latent.csv
+muteffects_observed_heatmap: results/muteffects_functional/muteffects_observed_heatmap.html
+muteffects_latent_heatmap: results/muteffects_functional/muteffects_latent_heatmap.html
+
+# PDBs colored by escape
+escape_PDB_structures: results/escape_PDBs
+
+# html documentation
+docs_source_dir: results/docs_source

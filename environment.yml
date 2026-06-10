@@ -1,0 +1,55 @@
+name: dms-vep-pipeline
+
+channels:
+  - conda-forge
+  - bioconda
+  - defaults
+
+dependencies:
+  - python
+  - pip
+
+  # Workflow
+  - snakemake
+
+  # Sequence analysis
+  - mafft
+  - minimap2
+  - biopython
+  
+
+  # Core scientific stack
+  - numpy
+  - pandas
+  - scipy
+  - matplotlib
+  - seaborn
+
+  # Visualization
+  - bokeh
+  - graphviz
+  - upsetplot
+
+  # Data handling
+  - openpyxl
+  - beautifulsoup4
+
+  # Notebooks
+  - jupyterlab
+  - papermill
+
+  # Utilities
+  - git-lfs
+  - mamba
+
+  - pip:
+      - alignparse==0.6.0
+      - binarymap==0.8
+      - dms-variants==1.4.2
+      - dna-features-viewer==3.1.5
+      - natsort==8.4.0
+      - polyclonal==4.1
+      - pysam==0.23.3
+      - plotnine==0.15.3
+      - statsmodels==0.14.6
+      - joypy==0.2.6
