@@ -14,13 +14,16 @@ PSEUDOCOUNT            = config["pipeline"].get("pseudocount", 0.5)
 MIN_PRE_COUNTS         = config["pipeline"].get("min_preselection_counts", 20)
 MIN_PRE_FRAC           = config["pipeline"].get("min_preselection_frac", 1e-6)
 
+ANALYSIS_NOTEBOOK_IN   = "functional_score_analysis.ipynb"
+ANALYSIS_NOTEBOOK_OUT  = "results/functional_score_analysis.ipynb"
+
 
 # ---------------------------------------------------------------------------
 # Target rule — running `snakemake` with no arguments builds the final output
 # ---------------------------------------------------------------------------
 rule all:
     input:
-        directory(FUNC_SCORES_DIR)
+        ANALYSIS_NOTEBOOK_OUT
 
 
 # ---------------------------------------------------------------------------
@@ -91,3 +94,17 @@ rule compute_func_scores:
         "--pseudocount {params.pseudocount} "
         "--min-preselection-counts {params.min_counts} "
         "--min-preselection-frac {params.min_frac}"
+
+
+# ---------------------------------------------------------------------------
+# Step 5: Run analysis notebook
+# ---------------------------------------------------------------------------
+rule run_analysis_notebook:
+    input:
+        notebook   = ANALYSIS_NOTEBOOK_IN,
+        func_scores = FUNC_SCORES_DIR,
+        selections  = FUNCTIONAL_SELECTIONS
+    output:
+        ANALYSIS_NOTEBOOK_OUT
+    shell:
+        "papermill {input.notebook} {output}"
