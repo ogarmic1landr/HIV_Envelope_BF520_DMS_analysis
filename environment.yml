@@ -1,4 +1,4 @@
-name: dms-vep-pipeline
+name: dms-vep-pipeline1
 
 channels:
   - conda-forge
@@ -37,6 +37,7 @@ dependencies:
   # Notebooks
   - jupyterlab
   - papermill
+  - ipywidgets
 
   # Utilities
   - git-lfs
@@ -48,7 +49,7 @@ dependencies:
       - dms-variants==1.4.2
       - dna-features-viewer==3.1.5
       - natsort==8.4.0
-      - polyclonal==4.1
+      - polyclonal==6.17
       - pysam==0.23.3
       - plotnine==0.15.3
       - statsmodels==0.14.6

@@ -3,16 +3,17 @@ import numpy as np
 import os
 import re
 import logging
+import argparse
 
 
 
 
 class MutationMapper:
-    def __init__(self, input_folder, map_file, output_folder="mapped_output", suffix="_mapped"):
+    def __init__(self, input_folder, map_file, output_dir, suffix="_mapped"):
         self.input_folder = input_folder
         self.map_file = map_file
         self.suffix = suffix
-        self.output_folder = os.path.join(input_folder, output_folder)
+        self.output_folder = output_dir
         os.makedirs(self.output_folder, exist_ok=True)
 
         # Set up a logger for this instance
@@ -130,12 +131,31 @@ class MutationMapper:
 
 
 if __name__ == "__main__":
-    # Set up root logger once
-    #logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
+    parser = argparse.ArgumentParser(
+        description="Remap amino acid substitution positions to reference numbering"
+    )
+    parser.add_argument(
+        "--input-dir", required=True,
+        help="Directory containing merged variant count CSVs"
+    )
+    parser.add_argument(
+        "--map-file", required=True,
+        help="CSV mapping sequential_site to reference_site"
+    )
+    parser.add_argument(
+        "--output-dir", required=True,
+        help="Output directory for mapped CSV files"
+    )
+    parser.add_argument(
+        "--suffix", default="_mapped",
+        help="Suffix to append to output filenames (default: _mapped)"
+    )
+    args = parser.parse_args()
+
     mapper = MutationMapper(
-        input_folder="/home/lechiffre/HIV_Envelope_BF520_DMS_CD4bs_sera/results/func_scores/merged_output_clean",
-        map_file="/home/lechiffre/HIV_Envelope_BF520_DMS_CD4bs_sera/results/site_numbering/site_numbering_map.csv",
-        output_folder="mapped_output_clean",
-        suffix="_mapped"
+        input_folder=args.input_dir,
+        map_file=args.map_file,
+        output_dir=args.output_dir,
+        suffix=args.suffix,
     )
     mapper.run_all()

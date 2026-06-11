@@ -220,3 +220,19 @@ escape_PDB_structures: results/escape_PDBs
 
 # html documentation
 docs_source_dir: results/docs_source
+
+# ----------------------------------------------------------------------------
+# Custom functional score pipeline
+# All paths are relative to the repo root.
+# Run the full pipeline with: snakemake --cores 1
+# ----------------------------------------------------------------------------
+pipeline:
+  variant_counts_dir:          variant_counts
+  site_numbering_map:          site_numbering/site_numbering_map.csv
+  functional_selections_clean: results/functional_selections_clean.csv
+  merged_output_dir:           results/merged_output
+  mapped_output_dir:           results/mapped_output
+  func_scores_dir:             results/func_scores_output
+  pseudocount:                 0.5
+  min_preselection_counts:     20
+  min_preselection_frac:       0.000001

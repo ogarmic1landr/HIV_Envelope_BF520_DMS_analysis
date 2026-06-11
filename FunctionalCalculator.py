@@ -1,6 +1,9 @@
 import pandas as pd
 import numpy as np
 import logging
+import glob
+import os
+import argparse
 
 
 class FunctionalScoreCalculator:
@@ -273,3 +276,104 @@ class FunctionalScoreCalculator:
         )
 
         return df
+
+    # -----------------------------------
+    # Process all mapped files in a folder
+    # -----------------------------------
+    def run_all(self, input_dir, output_dir, selections_file=None):
+
+        os.makedirs(output_dir, exist_ok=True)
+
+        # Build pre_sample / post_sample lookup from selections CSV
+        meta = None
+        if selections_file:
+            sel = pd.read_csv(selections_file)
+            meta = sel[
+                ["selection_name", "preselection_sample", "postselection_sample"]
+            ].rename(columns={
+                "preselection_sample": "pre_sample",
+                "postselection_sample": "post_sample",
+            })
+
+        files = sorted(glob.glob(os.path.join(input_dir, "*.csv")))
+
+        if not files:
+            raise FileNotFoundError(
+                f"No CSV files found in {input_dir}"
+            )
+
+        self.logger.info(f"Found {len(files)} files to process")
+
+        final_columns = [
+            "library", "pre_sample", "post_sample", "barcode",
+            "func_score", "func_score_var",
+            "pre_count", "post_count", "pre_count_wt", "post_count_wt",
+            "pseudocount", "n_codon_substitutions",
+            "aa_substitutions_sequential", "n_aa_substitutions",
+            "aa_substitutions_reference", "pre_count_threshold",
+        ]
+
+        for filepath in files:
+
+            filename = os.path.basename(filepath)
+            self.logger.info(f"Processing: {filename}")
+
+            df = pd.read_csv(filepath)
+            result = self.run(df)
+
+            result["library"] = filename.split("_")[0]
+
+            result = result.rename(columns={
+                "aa_substitutions_sequence": "aa_substitutions_sequential"
+            })
+
+            if meta is not None:
+                result = result.merge(meta, on="selection_name", how="left")
+
+            missing = [c for c in final_columns if c not in result.columns]
+            if missing:
+                raise ValueError(f"Missing final columns in {filename}: {missing}")
+
+            result = result[final_columns]
+
+            output_name = filename.replace(".csv", "_func_score.csv")
+            output_path = os.path.join(output_dir, output_name)
+            result.to_csv(output_path, index=False)
+            self.logger.info(f"Saved: {output_path}")
+
+        self.logger.info("All files processed successfully")
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(
+        description="Compute functional scores from mapped variant count CSVs"
+    )
+    parser.add_argument(
+        "--input-dir", required=True,
+        help="Directory containing mapped CSV files (output of MutationMapper)"
+    )
+    parser.add_argument(
+        "--output-dir", required=True,
+        help="Output directory for *_func_score.csv files"
+    )
+    parser.add_argument(
+        "--selections", default=None,
+        help="Path to functional_selections_clean.csv for pre_sample/post_sample metadata"
+    )
+    parser.add_argument(
+        "--pseudocount", type=float, default=0.5
+    )
+    parser.add_argument(
+        "--min-preselection-counts", type=int, default=20
+    )
+    parser.add_argument(
+        "--min-preselection-frac", type=float, default=1e-6
+    )
+    args = parser.parse_args()
+
+    calc = FunctionalScoreCalculator(
+        pseudocount=args.pseudocount,
+        min_preselection_counts=args.min_preselection_counts,
+        min_preselection_frac=args.min_preselection_frac,
+    )
+    calc.run_all(args.input_dir, args.output_dir, selections_file=args.selections)

@@ -1,16 +1,14 @@
 import pandas as pd
 import os
+import argparse
 
 
 class VariantMerger:
-    def __init__(self, variant_count_dir, selection_file, output_folder="merged_output"):
+    def __init__(self, variant_count_dir, selection_file, output_dir):
 
         self.variant_count_dir = variant_count_dir
         self.selection_file = selection_file
-
-        # Portable output path (based on selection file location)
-        base_dir = os.path.dirname(self.selection_file)
-        self.output_dir = os.path.join(base_dir, output_folder)
+        self.output_dir = output_dir
 
         os.makedirs(self.output_dir, exist_ok=True)
 
@@ -128,8 +126,8 @@ class VariantMerger:
     def process_single_selection(self, row):
 
         selection_name = str(row["selection_name"]).strip()
-        pre_file = str(row["preselection_sample"]).strip()
-        post_file = str(row["postselection_sample"]).strip()
+        pre_file = str(row["preselection_library_sample"]).strip()
+        post_file = str(row["postselection_library_sample"]).strip()
 
 
 
@@ -197,13 +195,27 @@ class VariantMerger:
         return results
 
 
-#  OUTSIDE CLASS (NO INDENTATION)
-#if __name__ == "__main__":
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(
+        description="Merge pre- and post-selection variant count CSVs"
+    )
+    parser.add_argument(
+        "--selections", required=True,
+        help="Path to functional_selections_clean.csv"
+    )
+    parser.add_argument(
+        "--variant-counts-dir", required=True,
+        help="Directory containing raw variant count CSVs"
+    )
+    parser.add_argument(
+        "--output-dir", required=True,
+        help="Output directory for merged CSV files"
+    )
+    args = parser.parse_args()
 
-    #merger = VariantMerger(
-        #variant_count_dir="/home/lechiffre/HIV_Envelope_BF520_DMS_CD4bs_sera/results/variant_counts",
-        #selection_file="/home/lechiffre/HIV_Envelope_BF520_DMS_CD4bs_sera/results/func_scores/functional_selections_clean.csv",
-        #output_folder="merged_output_clean"
-    #)
-
-    #merger.run_all()
+    merger = VariantMerger(
+        variant_count_dir=args.variant_counts_dir,
+        selection_file=args.selections,
+        output_dir=args.output_dir,
+    )
+    merger.run_all()

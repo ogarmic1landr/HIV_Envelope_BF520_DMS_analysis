@@ -1,86 +1,137 @@
 import pandas as pd
 import os
+import argparse
 
 
 class CleanPairer:
-    def __init__(self, input_csv, output_csv):
-        self.input_csv = input_csv
+    """
+    Scans a variant_counts directory and generates functional selection pairs
+    by matching VSVG_control (preselection) with no-antibody_control (postselection)
+    files that share the same library, date, rescue batch, and replicate number.
+
+    Expected filename format:
+        {library}_{date}_{virus_batch}_{experiment_type}_{replicate}.csv
+    Example:
+        A_2022-07-20_rescue-2_VSVG_control_1.csv
+        A_2022-07-20_rescue-2_no-antibody_control_1.csv
+
+    Output columns:
+        preselection_sample, library, virus_batch, replicate,
+        postselection_sample, preselection_library_sample,
+        postselection_library_sample, selection_name
+    """
+
+    def __init__(self, variant_counts_dir, output_csv):
+        self.variant_counts_dir = variant_counts_dir
         self.output_csv = output_csv
 
-    def parse_sample(self, sample):
-        """
-        Extract prefix, date, and replicate from sample name
-        Example:
-        A_2022-09-01_rescue-3_VSVG_control_1
-        """
-        parts = sample.split("_")
+    def _parse_filename(self, filename):
+        name = os.path.splitext(filename)[0]
+        parts = name.split("_")
+        if len(parts) < 5:
+            raise ValueError(f"Cannot parse filename: {filename}")
+        library = parts[0]
+        date = parts[1]
+        virus_batch = parts[2]
+        replicate = parts[-1]
+        experiment_type = "_".join(parts[3:-1])
+        return library, date, virus_batch, experiment_type, replicate
 
-        prefix = parts[0]         # A or B
-        date = parts[1]           # 2022-09-01
-        replicate = parts[-1]     # 1 or 2
+    def generate_pairs(self):
+        files = [
+            f for f in sorted(os.listdir(self.variant_counts_dir))
+            if f.endswith(".csv") and not f.startswith("avg_counts")
+        ]
 
-        return prefix, date, replicate
+        vsvg = {}
+        no_ab = {}
 
-    def is_valid_pair(self, row):
-        pre = str(row["preselection_sample"]).strip()
-        post = str(row["postselection_sample"]).strip()
+        for f in files:
+            try:
+                library, date, virus_batch, exp_type, rep = self._parse_filename(f)
+            except ValueError as e:
+                print(f"Skipping: {e}")
+                continue
 
-        # ✔ Only keep correct experiment types
-        if "VSVG_control" not in pre:
-            return False
-        if "no-antibody_control" not in post:
-            return False
+            key = (library, date, virus_batch, rep)
+            sample_with_prefix = os.path.splitext(f)[0]
+            sample_no_prefix = "_".join(sample_with_prefix.split("_")[1:])
 
-        # ✔ Extract metadata
-        try:
-            p_prefix, p_date, p_rep = self.parse_sample(pre)
-            q_prefix, q_date, q_rep = self.parse_sample(post)
-        except Exception:
-            return False
+            if exp_type == "VSVG_control":
+                vsvg[key] = (sample_with_prefix, sample_no_prefix)
+            elif exp_type == "no-antibody_control":
+                no_ab[key] = (sample_with_prefix, sample_no_prefix)
 
-        #  Enforce strict matching
-        return (
-            p_prefix == q_prefix and
-            p_date == q_date and
-            p_rep == q_rep
-        )
+        pairs = []
+        for key in sorted(vsvg):
+            library, date, virus_batch, rep = key
+            pre_lib, pre_no_lib = vsvg[key]
+            if key in no_ab:
+                post_lib, post_no_lib = no_ab[key]
+                pairs.append({
+                    "preselection_sample":         pre_no_lib,
+                    "library":                     library,
+                    "virus_batch":                 virus_batch,
+                    "replicate":                   int(rep),
+                    "postselection_sample":        post_no_lib,
+                    "preselection_library_sample": pre_lib,
+                    "postselection_library_sample": post_lib,
+                    "selection_name":              f"{pre_lib}_vs_{post_no_lib}",
+                })
+            else:
+                print(f"Warning: no matching no-antibody_control for {pre_lib}")
 
-    def clean(self):
-        print("\nLoading functional selections...")
-        df = pd.read_csv(self.input_csv)
+        return pairs
 
-        print(f"Total original pairs: {len(df)}")
+    def run(self):
+        pairs = self.generate_pairs()
 
-        # Apply filtering
-        clean_df = df[df.apply(self.is_valid_pair, axis=1)].copy()
+        if not pairs:
+            raise ValueError(
+                "No valid pairs found. Check that variant_counts_dir contains "
+                "matching VSVG_control and no-antibody_control files."
+            )
 
-        # Remove duplicates (extra safety)
-        clean_df = clean_df.drop_duplicates(
-            subset=["preselection_sample", "postselection_sample"]
-        )
+        columns = [
+            "preselection_sample",
+            "library",
+            "virus_batch",
+            "replicate",
+            "postselection_sample",
+            "preselection_library_sample",
+            "postselection_library_sample",
+            "selection_name",
+        ]
+        df = pd.DataFrame(pairs, columns=columns)
+        print(f"Found {len(df)} valid functional pairs")
 
-        print(f"Total valid pairs after cleaning: {len(clean_df)}")
+        out_dir = os.path.dirname(os.path.abspath(self.output_csv))
+        os.makedirs(out_dir, exist_ok=True)
 
-        # Prevent overwrite
         if os.path.exists(self.output_csv):
             raise FileExistsError(
                 f"Output file already exists: {self.output_csv}\n"
-                "Delete it or change the name."
+                "Delete it or choose a different path."
             )
 
-        # Save
-        clean_df.to_csv(self.output_csv, index=False)
-
-        print("\n Clean file saved successfully:")
-        print(self.output_csv)
+        df.to_csv(self.output_csv, index=False)
+        print(f"Saved: {self.output_csv}")
+        return df
 
 
-#  RUN SCRIPT
-#if __name__ == "__main__":
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(
+        description="Generate functional selection pairs from variant counts folder"
+    )
+    parser.add_argument(
+        "--variant-counts-dir", required=True,
+        help="Directory containing raw variant count CSVs"
+    )
+    parser.add_argument(
+        "--output-csv", required=True,
+        help="Output path for functional_selections_clean.csv"
+    )
+    args = parser.parse_args()
 
-    #pairer = CleanPairer(
-        #input_csv="/home/lechiffre/HIV_Envelope_BF520_DMS_CD4bs_sera/results/func_scores/functional_selections.csv",
-        #output_csv="/home/lechiffre/HIV_Envelope_BF520_DMS_CD4bs_sera/results/func_scores/functional_selections_clean.csv"
-    #)
-
-    #pairer.clean()
+    pairer = CleanPairer(args.variant_counts_dir, args.output_csv)
+    pairer.run()
