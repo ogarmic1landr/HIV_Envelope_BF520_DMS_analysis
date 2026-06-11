@@ -223,3 +223,6 @@ rulegraph.svg
 dag.png
 dag.svg
 filegraph.png
+
+# Generated pipeline results
+results/
