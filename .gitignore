@@ -216,3 +216,11 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Snakemake graph outputs
+rulegraph.png
+rulegraph.svg
+dag.png
+dag.svg
+filegraph.svg
+filegraph.png
