@@ -9,6 +9,14 @@ import argparse
 
 
 class MutationMapper:
+    """
+        Maps amino acid substitutions from sequential numbering to reference
+        coordinates using a mapping file. Reads merged variant count CSVs,
+        adds annotations (n_aa_substitutions, n_codon_substitutions, reference‑mapped
+        substitutions), and writes updated files.
+    """
+
+
     def __init__(self, input_folder, map_file, output_dir, suffix="_mapped"):
         self.input_folder = input_folder
         self.map_file = map_file
@@ -35,25 +43,31 @@ class MutationMapper:
         self.logger.info("Initializing MutationMapper...")
         self.map_df = pd.read_csv(self.map_file)
 
+
         # Validate FIRST (before using columns)
         required_map_cols = ["sequential_site", "reference_site"]
         missing = [c for c in required_map_cols if c not in self.map_df.columns]
         if missing:
             raise ValueError(f"Mapping file missing columns: {missing}")
 
+
         #  Then enforce types
         self.map_df["sequential_site"] = self.map_df["sequential_site"].astype(int)
         self.map_df["reference_site"] = self.map_df["reference_site"].astype(str)
+
 
         # Then build mapping
         self.mapping_dict = dict(
             zip(self.map_df["sequential_site"], self.map_df["reference_site"])
         )
         
-
-    
     
     def count_substitutions(self, mutation_string):
+        """
+            Return the number of substitutions in a mutation string.
+            Empty values and placeholder dashes are treated as zero substitutions.    
+        """
+
         if pd.isna(mutation_string) or str(mutation_string).strip() == "":
             return 0
         s = re.sub(r"\s*-\s*", " ", str(mutation_string)).upper()
@@ -61,8 +75,12 @@ class MutationMapper:
     
 
     
-    
     def map_aa_substitutions(self, aa_string):
+        """
+            Convert amino acid substitution positions from sequential
+            numbering to reference numbering.
+        """
+
         if pd.isna(aa_string) or str(aa_string).strip() == "":
             return ""
         # Replace dashes with spaces and uppercase for consistency
@@ -84,10 +102,15 @@ class MutationMapper:
                 mapped.append(mut)
         return " ".join(mapped)
     
-
-    
-    
+ 
     def process_file(self, filepath):
+        """
+            Process a variant count CSV file by validating required columns,
+            counting amino acid and codon substitutions, mapping amino acid
+            positions to reference numbering, and writing the annotated
+            results to an output CSV.
+        """
+
         self.logger.info(f"Processing file: {filepath}")
         df = pd.read_csv(filepath)
         required_cols = [
@@ -109,6 +132,7 @@ class MutationMapper:
         output_filename = f"{base}{self.suffix}.csv"
         output_path = os.path.join(self.output_folder, output_filename)
 
+
         # Optional: prevent overwriting
         if os.path.exists(output_path):
             self.logger.warning(f"Output file exists, overwriting: {output_filename}")
@@ -118,6 +142,11 @@ class MutationMapper:
 
 
     def run_all(self):
+        """
+            Process all variant count CSV files in the input folder by
+            applying mutation mapping and saving annotated outputs.
+        """
+
         files = [f for f in os.listdir(self.input_folder) if f.endswith(".csv")]
         if not files:
             self.logger.warning("No CSV files found in input folder")
@@ -126,7 +155,6 @@ class MutationMapper:
         for file in files:
             self.process_file(os.path.join(self.input_folder, file))
         self.logger.info("All files processed successfully")
-
 
 
 
