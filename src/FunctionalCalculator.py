@@ -7,6 +7,11 @@ import argparse
 
 
 class FunctionalScoreCalculator:
+    """
+    Computes variant functional scores (log2 enrichment over WT) from 
+    preselection/postselection counts. WT is identified by n_codon_substitutions == 0.
+    Uses a pseudocount and dynamic preselection threshold.
+    """
 
     def __init__(
         self,
@@ -19,6 +24,7 @@ class FunctionalScoreCalculator:
         selection_col="selection_name"
     ):
 
+        
         self.pseudocount = pseudocount
         self.min_preselection_counts = (min_preselection_counts)
 
@@ -49,9 +55,8 @@ class FunctionalScoreCalculator:
 
             self.logger.setLevel(logging.INFO)
 
-    # -----------------------------------
+    
     # Compute WT from raw data
-    # -----------------------------------
     def compute_wt(self, df):
 
         self.logger.info(
@@ -99,9 +104,7 @@ class FunctionalScoreCalculator:
 
         return wt_summary
 
-    # -----------------------------------
     # Compute functional score
-    # -----------------------------------
     def compute_scores(self, df):
 
         self.logger.info(
@@ -120,7 +123,7 @@ class FunctionalScoreCalculator:
                 (df[self.pre_col] + p) /
                 (df["pre_count_wt"] + p)
             )
-        )
+        ).round(4)
 
         # Functional score variance
         df["func_score_var"] = (
@@ -131,13 +134,13 @@ class FunctionalScoreCalculator:
                 1 / (df["post_count_wt"] + p) +
                 1 / (df["pre_count_wt"] + p)
             )
-        )
+        ).round(4)
 
         return df
 
-    # -----------------------------------
+   
     # Main pipeline
-    # -----------------------------------
+    
     def run(self, df):
 
         self.logger.info(
@@ -165,23 +168,18 @@ class FunctionalScoreCalculator:
                 f"Missing required columns: {missing}"
             )
 
-        # -----------------------------------
+        
         # Step 1: Compute WT
-        # -----------------------------------
         wt_summary = self.compute_wt(df)
 
-        # -----------------------------------
         # Step 2: Merge WT
-        # -----------------------------------
         df = df.merge(
             wt_summary,
             on=self.sel_col,
             how="left"
         )
 
-        # -----------------------------------
         # Step 3: Missing WT
-        # -----------------------------------
         missing_mask = (
             df["pre_count_wt"].isna() |
             df["post_count_wt"].isna()
@@ -204,9 +202,7 @@ class FunctionalScoreCalculator:
                 f"{list(sorted(missing))}"
             )
 
-        # -----------------------------------
         # Step 4: Invalid WT
-        # -----------------------------------
         invalid_mask = (
             (df["pre_count_wt"] <= 0) |
             (df["post_count_wt"] <= 0)
@@ -253,14 +249,12 @@ class FunctionalScoreCalculator:
 
 
 
-        # -----------------------------------
+        
         # Step 5: Compute scores
-        # -----------------------------------
         df = self.compute_scores(df)
 
-        # -----------------------------------
+    
         # Step 6: Metadata
-        # -----------------------------------
         df["pseudocount"] = (
             self.pseudocount
         )
@@ -277,9 +271,7 @@ class FunctionalScoreCalculator:
 
         return df
 
-    # -----------------------------------
     # Process all mapped files in a folder
-    # -----------------------------------
     def run_all(self, input_dir, output_dir, selections_file=None):
 
         os.makedirs(output_dir, exist_ok=True)

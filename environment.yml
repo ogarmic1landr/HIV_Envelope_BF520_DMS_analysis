@@ -44,6 +44,7 @@ dependencies:
   - mamba
 
   - pip:
+      - -e .
       - alignparse==0.6.0
       - binarymap==0.8
       - dms-variants==1.4.2

@@ -1,0 +1,41 @@
+# Editable install of this package (makes `from config import config` work)
+-e .
+
+# Workflow
+snakemake==7.21.0
+
+# Core scientific stack
+numpy
+pandas
+scipy
+matplotlib
+seaborn
+
+# Visualization
+bokeh
+graphviz
+upsetplot
+
+# Data handling
+openpyxl
+beautifulsoup4
+
+# Notebooks
+jupyterlab
+papermill
+ipywidgets
+
+# DMS-specific packages
+alignparse==0.6.0
+binarymap==0.8
+dms-variants==1.4.2
+dna-features-viewer==3.1.5
+natsort==8.4.0
+polyclonal==6.17
+pysam==0.23.3
+plotnine==0.15.3
+statsmodels==0.14.6
+joypy==0.2.6
+
+# NOTE: the following tools are not pip-installable and must be installed separately:
+#   mafft, minimap2, entrez-direct, git-lfs

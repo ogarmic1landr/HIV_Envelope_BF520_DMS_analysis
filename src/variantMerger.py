@@ -4,6 +4,15 @@ import argparse
 
 
 class VariantMerger:
+    """
+        Merge preselection and postselection variant count files into
+        selection-specific datasets using metadata from a selections file.
+
+        The merger reads variant count data, matches samples according to
+        the selection metadata, and generates merged CSV files for
+        downstream functional score analysis.
+    """
+
     def __init__(self, variant_count_dir, selection_file, output_dir):
 
         self.variant_count_dir = variant_count_dir
@@ -19,6 +28,11 @@ class VariantMerger:
         print("Output dir:", self.output_dir)
 
     def load_and_filter(self, filepath):
+        """
+            Load a variant count CSV file, validate required columns,
+            and remove neutral-standard control rows.
+        """
+
         if not os.path.exists(filepath):
             raise FileNotFoundError(f"File not found: {filepath}")
 
@@ -34,26 +48,24 @@ class VariantMerger:
             raise ValueError(f"Missing columns in {filepath}: {missing_columns}")
 
 
-
-
         # Remove neut_standard rows
         df = df[
             (df["aa_substitutions"] != "neut_standard") &
             (df["codon_substitutions"] != "neut_standard")
         ]
 
-
         return df
     
 
+    def find_file(self, sample_name):
+        """
+            Locate the variant count CSV corresponding to a sample,
+            ensuring exactly one matching file is found.
+        """
 
-    def find_file(self, sample_name, selection_name):
-        prefix = selection_name.split("_")[0]
         matches = [
             f for f in os.listdir(self.variant_count_dir)
-            if f.endswith(".csv") 
-            and f.startswith(prefix + "_") 
-            and sample_name in f
+            if os.path.splitext(f)[0] == sample_name
         ]
 
         if len(matches) == 0:
@@ -68,9 +80,15 @@ class VariantMerger:
         return os.path.join(self.variant_count_dir, matches[0])
 
 
-
-
     def merge_variant_counts(self, pre_df, post_df):
+
+        """
+            Merge preselection and postselection variant count data on
+            barcode and mutation identifiers, filling missing values
+            and standardizing count columns.
+        """
+
+
         # Rename columns to avoid collisions
         pre_df = pre_df.rename(columns={
             "count": "pre_count",
@@ -88,7 +106,6 @@ class VariantMerger:
         post_df = post_df.drop_duplicates(subset=["barcode", "aa_substitutions", "codon_substitutions"])
 
 
-
         # Merge on unique identifiers
         merged = pd.merge(
             pre_df,
@@ -98,23 +115,19 @@ class VariantMerger:
         )
 
 
-
         # Fill missing values with 0
         merged["pre_count"] = merged["pre_count"].fillna(0)
         merged["post_count"] = merged["post_count"].fillna(0)
 
 
         #fill missing variant call support with 0
-
         merged["pre_variant_call_support"] = merged["pre_variant_call_support"].fillna(0)
         merged["post_variant_call_support"] = merged["post_variant_call_support"].fillna(0)
-
 
 
         #convert variant call support to integers
         merged["pre_variant_call_support"] = merged["pre_variant_call_support"].astype(int)
         merged["post_variant_call_support"] = merged["post_variant_call_support"].astype(int)   
-
 
 
         # Convert counts back to integers
@@ -124,18 +137,14 @@ class VariantMerger:
         return merged
 
     def process_single_selection(self, row):
+        """Load, filter, and merge pre/post variant counts for one selection row."""
 
         selection_name = str(row["selection_name"]).strip()
         pre_file = str(row["preselection_library_sample"]).strip()
         post_file = str(row["postselection_library_sample"]).strip()
 
-
-
-
-        pre_path = self.find_file(pre_file, selection_name)
-        post_path = self.find_file(post_file, selection_name)   
-
-
+        pre_path = self.find_file(pre_file)
+        post_path = self.find_file(post_file)   
 
         print(f"\nProcessing: {selection_name}")
         print("Pre path:", pre_path)
@@ -177,6 +186,11 @@ class VariantMerger:
         return selection_name, final_df
 
     def run_all(self):
+        """
+            Process all selections, generate merged variant count tables,
+            and save each selection as a separate CSV file.
+        """
+
         results = {}
 
         for _, row in self.selections.iterrows():

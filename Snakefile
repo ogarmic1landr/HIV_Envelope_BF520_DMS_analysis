@@ -14,7 +14,7 @@ PSEUDOCOUNT            = config["pipeline"].get("pseudocount", 0.5)
 MIN_PRE_COUNTS         = config["pipeline"].get("min_preselection_counts", 20)
 MIN_PRE_FRAC           = config["pipeline"].get("min_preselection_frac", 1e-6)
 
-ANALYSIS_NOTEBOOK_IN   = "functional_score_analysis.ipynb"
+ANALYSIS_NOTEBOOK_IN   = "notebooks/functional_score_analysis.ipynb"
 ANALYSIS_NOTEBOOK_OUT  = "results/functional_score_analysis.ipynb"
 
 
@@ -35,7 +35,7 @@ rule clean_pairs:
     output:
         FUNCTIONAL_SELECTIONS
     shell:
-        "python CleanPairer.py "
+        "python src/CleanPairer.py "
         "--variant-counts-dir {input} "
         "--output-csv {output}"
 
@@ -50,7 +50,7 @@ rule merge_variants:
     output:
         directory(MERGED_OUTPUT_DIR)
     shell:
-        "python variantMerger.py "
+        "python src/variantMerger.py "
         "--selections {input.selections} "
         "--variant-counts-dir {input.counts_dir} "
         "--output-dir {output}"
@@ -66,7 +66,7 @@ rule map_mutations:
     output:
         directory(MAPPED_OUTPUT_DIR)
     shell:
-        "python MutationMapper.py "
+        "python src/MutationMapper.py "
         "--input-dir {input.merged_dir} "
         "--map-file {input.map_file} "
         "--output-dir {output}"
@@ -87,7 +87,7 @@ rule compute_func_scores:
         min_counts   = MIN_PRE_COUNTS,
         min_frac     = MIN_PRE_FRAC
     shell:
-        "python FunctionalCalculator.py "
+        "python src/FunctionalCalculator.py "
         "--input-dir {input.mapped_dir} "
         "--output-dir {output} "
         "--selections {input.selections} "

@@ -140,10 +140,10 @@ site_numbering_map: results/site_numbering/site_numbering_map.csv
 
 # library design inputs into main pipeline
 natural_sequence_data: library_design/results/natural_sequence_data.csv
-natural_sequence_counts: library_design/results/natural_sequence_mutation_counts.csv
+natural_sequence_counts: data/library_design/results/natural_sequence_mutation_counts.csv
 # Classify mutations into different categories, such as which ones are
 # designed to be in the library.
-mutation_design_classification: library_design/results/designed_mutations.csv
+mutation_design_classification: data/library_design/results/designed_mutations.csv
 
 # Neutralization standard barcodes
 neut_standard_barcodes: data/neutralization_standard_barcodes.csv
@@ -227,8 +227,8 @@ docs_source_dir: results/docs_source
 # Run the full pipeline with: snakemake --cores 1
 # ----------------------------------------------------------------------------
 pipeline:
-  variant_counts_dir:          variant_counts
-  site_numbering_map:          site_numbering/site_numbering_map.csv
+  variant_counts_dir:          data/variant_counts
+  site_numbering_map:          data/site_numbering/site_numbering_map.csv
   functional_selections_clean: results/functional_selections_clean.csv
   merged_output_dir:           results/merged_output
   mapped_output_dir:           results/mapped_output

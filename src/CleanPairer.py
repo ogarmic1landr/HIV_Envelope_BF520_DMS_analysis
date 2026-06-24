@@ -5,21 +5,10 @@ import argparse
 
 class CleanPairer:
     """
-    Scans a variant_counts directory and generates functional selection pairs
-    by matching VSVG_control (preselection) with no-antibody_control (postselection)
-    files that share the same library, date, rescue batch, and replicate number.
-
-    Expected filename format:
-        {library}_{date}_{virus_batch}_{experiment_type}_{replicate}.csv
-    Example:
-        A_2022-07-20_rescue-2_VSVG_control_1.csv
-        A_2022-07-20_rescue-2_no-antibody_control_1.csv
-
-    Output columns:
-        preselection_sample, library, virus_batch, replicate,
-        postselection_sample, preselection_library_sample,
-        postselection_library_sample, selection_name
-    """
+Generates functional selection pairs by matching VSVG_control vs no-antibody_control
+CSVs from variant_counts_dir using library, date, batch, and replicate keys.
+Filename format: {library}_{date}_{batch}_{type}_{replicate}.csv
+"""
 
     def __init__(self, variant_counts_dir, output_csv):
         self.variant_counts_dir = variant_counts_dir
